@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Encontre jogos, DLCs e outras ofertas gratuitas com a API GamerPower.">
+  <title>GameFree — Jogos e ofertas gratuitas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#inicio" aria-label="GameFree início">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span>Game<span>Free</span></span>
+      </a>
+      <div class="nav-note">Jogos e recompensas sem custo</div>
+    </div>
+  </header>
+
+  <main class="container" id="inicio">
+    <section class="hero" aria-labelledby="main-title">
+      <div class="eyebrow">Central de ofertas gamer</div>
+      <h1 id="main-title">Seu próximo jogo.<br><span class="accent">Custo zero.</span></h1>
+      <p>Encontre jogos, conteúdos extras e outras ofertas gratuitas em diferentes plataformas. Os dados são consultados em tempo real pela API pública GamerPower.</p>
+      <div class="stats" aria-live="polite">
+        <div class="stat"><span class="stat-label">Ofertas carregadas</span><strong class="stat-value" id="stat-count">—</strong></div>
+        <div class="stat"><span class="stat-label">Valor estimado das ofertas</span><strong class="stat-value" id="stat-worth">Consultando...</strong></div>
+        <div class="stat"><span class="stat-label">Fonte dos dados</span><strong class="stat-value small">GamerPower API · REST/JSON</strong></div>
+      </div>
+    </section>
+
+    <section aria-label="Busca e filtros">
+      <form class="toolbar" id="filter-form">
+        <div class="field search-field">
+          <label for="search-input">Pesquisar oferta</label>
+          <input id="search-input" type="search" placeholder="Ex.: RPG, aventura, jogo..." autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="platform-select">Plataforma</label>
+          <select id="platform-select">
+            <option value="">Todas as plataformas</option>
+            <option value="pc">PC</option>
+            <option value="steam">Steam</option>
+            <option value="epic-games-store">Epic Games Store</option>
+            <option value="gog">GOG</option>
+            <option value="ps5">PlayStation 5</option>
+            <option value="ps4">PlayStation 4</option>
+            <option value="xbox-series-xs">Xbox Series X/S</option>
+            <option value="xbox-one">Xbox One</option>
+            <option value="switch">Nintendo Switch</option>
+            <option value="android">Android</option>
+            <option value="ios">iOS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="type-select">Tipo de oferta</label>
+          <select id="type-select">
+            <option value="">Todos os tipos</option>
+            <option value="game">Jogo completo</option>
+            <option value="loot">Itens / DLC</option>
+            <option value="beta">Beta / Playtest</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort-select">Ordenar por</label>
+          <select id="sort-select">
+            <option value="date">Mais recentes</option>
+            <option value="value">Maior valor</option>
+            <option value="popularity">Popularidade</option>
+          </select>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-primary" type="submit">⌕ Buscar</button>
+          <button class="btn btn-secondary" type="button" id="clear-filters">Limpar</button>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="offers-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="offers-title">Ofertas disponíveis</h2>
+          <p id="results-caption">Carregando dados da API...</p>
+        </div>
+        <button class="btn btn-quiet" type="button" id="refresh-button">↻ Atualizar ofertas</button>
+      </div>
+      <div class="status" id="status-message" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Conectando à GamerPower API...</span></div>
+      <div class="game-grid" id="games-grid"></div>
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon" aria-hidden="true">⌕</div>
+        <h3 id="empty-title">Nenhuma oferta encontrada</h3>
+        <p id="empty-description">Tente alterar a pesquisa ou os filtros.</p>
+        <button class="btn btn-secondary" type="button" id="empty-reset">Limpar filtros</button>
+      </div>
+      <div class="more-row"><button class="btn btn-secondary hidden" type="button" id="show-more">Mostrar mais ofertas</button></div>
+    </section>
+
+    <aside class="api-note">
+      <h3>Sobre este projeto</h3>
+      <p>Este site consome uma API REST de terceiros usando JavaScript e <code>fetch()</code>. Os dados pertencem à fonte consultada e podem mudar a qualquer momento. Agradecimento à <a href="https://www.gamerpower.com/" target="_blank" rel="noopener noreferrer">GamerPower</a> pela disponibilização da API pública. <a href="https://www.gamerpower.com/api-read" target="_blank" rel="noopener noreferrer">Consultar documentação</a>.</p>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <div>Desenvolvido por <strong id="student-name">Vinicius Gabriel Flores da Cunha</strong></div>
+      <div>Disciplina: <strong>Fundamentos ao Desenvolvimento Web</strong> · Sistemas de Informação</div>
+      <div>Dados fornecidos por <a href="https://www.gamerpower.com/" target="_blank" rel="noopener noreferrer">GamerPower.com</a></div>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop hidden" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-head"><h2 id="modal-title">Detalhes da oferta</h2><button class="close-btn" type="button" id="modal-close" aria-label="Fechar detalhes">×</button></div>
+      <div class="modal-body" id="modal-content"><div class="status"><span class="spinner" aria-hidden="true"></span><span>Carregando detalhes...</span></div></div>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
