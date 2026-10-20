@@ -137,3 +137,32 @@
       .footer-inner { flex-direction:column; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+
+    .logs-nav-link { text-decoration:none; white-space:nowrap; }
+    .logs-section { margin-top:42px; padding:22px; border:1px solid var(--line); border-radius:var(--radius); background:linear-gradient(145deg,rgba(25,25,39,.9),rgba(18,18,29,.9)); box-shadow:var(--shadow); scroll-margin-top:24px; }
+    .logs-heading { margin-top:0; }
+    .logs-help { margin:-2px 0 13px; color:var(--muted); font-size:.85rem; }
+    .logs-status { min-height:24px; margin:8px 0 14px; color:var(--muted); font-size:.88rem; overflow-wrap:anywhere; }
+    .logs-status.success { color:var(--green); }
+    .logs-status.error { color:var(--danger); }
+    .logs-status.warning { color:#f5cf7a; }
+    .logs-list { display:grid; gap:10px; }
+    .logs-empty { padding:22px 16px; border:1px dashed #3b3656; border-radius:12px; color:var(--muted); text-align:center; background:rgba(8,8,15,.3); }
+    .log-card { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:15px; align-items:center; padding:15px; border:1px solid var(--line); border-radius:12px; background:rgba(8,8,15,.45); }
+    .log-main { min-width:0; }
+    .log-title { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 7px; font-size:.95rem; font-weight:800; overflow-wrap:anywhere; }
+    .log-id { padding:3px 8px; border-radius:7px; color:var(--cyan); background:rgba(87,230,224,.09); font-size:.7rem; }
+    .log-details { display:grid; gap:5px; color:var(--muted); font-size:.82rem; overflow-wrap:anywhere; }
+    .log-details strong { color:#dedbed; font-weight:700; }
+    .log-delete { min-height:38px; padding:0 12px; border:1px solid rgba(255,139,154,.35); border-radius:9px; color:#ffabb5; background:rgba(255,83,113,.08); font-weight:800; }
+    .log-delete:hover { border-color:var(--danger); background:rgba(255,83,113,.15); }
+    .log-delete:disabled { opacity:.55; cursor:wait; }
+    @media (max-width:600px) {
+      .logs-section { padding:14px; margin-top:30px; }
+      .logs-heading { align-items:stretch; }
+      .logs-heading .btn { width:100%; }
+      .log-card { grid-template-columns:1fr; }
+      .log-delete { width:100%; }
+      .logs-nav-link { padding:0 10px; min-height:38px; font-size:.78rem; }
+    }

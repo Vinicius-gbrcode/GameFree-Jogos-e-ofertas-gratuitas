@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,7 @@
         <span class="brand-mark" aria-hidden="true">✦</span>
         <span>Game<span>Free</span></span>
       </a>
-      <div class="nav-note">Jogos e recompensas sem custo</div>
+      <a class="btn btn-quiet logs-nav-link" href="#logs-section">Ver logs da API ↓</a>
     </div>
   </header>
 
@@ -94,6 +94,21 @@
         <button class="btn btn-secondary" type="button" id="empty-reset">Limpar filtros</button>
       </div>
       <div class="more-row"><button class="btn btn-secondary hidden" type="button" id="show-more">Mostrar mais ofertas</button></div>
+    </section>
+
+    <section class="logs-section" id="logs-section" aria-labelledby="logs-title">
+      <div class="section-heading logs-heading">
+        <div>
+          <h2 id="logs-title">Registro de consumo da API</h2>
+          <p>Consulte e exclua os logs gerados pelas requisições feitas à GamerPower.</p>
+        </div>
+        <button class="btn btn-quiet" type="button" id="logs-refresh">↻ Atualizar logs</button>
+      </div>
+      <p class="logs-help">Os registros são salvos na API de logs da disciplina. Configure sua matrícula no início do arquivo <code>script.js</code> para habilitar o registro, a consulta e a exclusão.</p>
+      <div class="logs-status" id="logs-status" role="status" aria-live="polite">Clique em “Atualizar logs” para consultar os registros.</div>
+      <div class="logs-list" id="logs-list">
+        <div class="logs-empty">Os logs aparecerão aqui depois de consultar a API de registros.</div>
+      </div>
     </section>
 
     <aside class="api-note">

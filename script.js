@@ -1,7 +1,9 @@
 'use strict';
 
     const NOME_ALUNO = 'Vinicius Gabriel Flores da Cunha';
+    const MATRICULA = '335842';
     const API_BASE = 'https://www.gamerpower.com/api';
+    const LOGS_API_BASE = 'https://www.piway.com.br/unoesc/api';
     const INITIAL_VISIBLE = 9;
 
     const el = {
@@ -25,13 +27,18 @@
       modal: document.querySelector('#detail-modal'),
       modalContent: document.querySelector('#modal-content'),
       modalTitle: document.querySelector('#modal-title'),
-      modalClose: document.querySelector('#modal-close')
+      modalClose: document.querySelector('#modal-close'),
+      logsRefresh: document.querySelector('#logs-refresh'),
+      logsStatus: document.querySelector('#logs-status'),
+      logsList: document.querySelector('#logs-list')
     };
 
     let allGiveaways = [];
     let shownCount = INITIAL_VISIBLE;
     let currentFilters = { platform: '', type: '', sort: 'date' };
     let latestRequest = 0;
+    let latestLogsRequest = 0;
+    let logsViewed = false;
 
     function escapeHTML(value) {
       return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -60,13 +67,231 @@
       return String(value || '').split(',').map(part => part.trim()).filter(Boolean);
     }
 
+    function matriculaConfigurada() {
+      return Boolean(MATRICULA);
+    }
+
+    function describeGamerPowerMethod(path) {
+      const [resource, query = ''] = path.split('?');
+      const params = new URLSearchParams(query);
+      if (resource === '/giveaways') {
+        const filtros = [];
+        if (params.has('platform')) filtros.push(`plataforma ${params.get('platform')}`);
+        if (params.has('type')) filtros.push(`tipo ${params.get('type')}`);
+        if (params.has('sort-by')) filtros.push(`ordenação ${params.get('sort-by')}`);
+        return `GET giveaways${filtros.length ? ` com filtro: ${filtros.join(', ')}` : ' sem filtros'}`;
+      }
+      if (resource === '/giveaway') return `GET detalhes da oferta ID ${params.get('id') || 'não informado'}`;
+      if (resource === '/worth') {
+        const filtros = [];
+        if (params.has('platform')) filtros.push(`plataforma ${params.get('platform')}`);
+        if (params.has('type')) filtros.push(`tipo ${params.get('type')}`);
+        return `GET valor estimado${filtros.length ? ` com filtro: ${filtros.join(', ')}` : ' sem filtros'}`;
+      }
+      return `GET ${resource.replace(/^\//, '')}`;
+    }
+
+    function summarizeApiResult(path, data) {
+      if (path.startsWith('/giveaways')) {
+        if (Array.isArray(data)) return `${data.length} ofertas recebidas`;
+        return data && Number(data.status) === 201 ? 'Nenhuma oferta encontrada' : 'Consulta de ofertas concluída';
+      }
+      if (path.startsWith('/giveaway')) {
+        const item = Array.isArray(data) ? data[0] : data;
+        const title = item && item.title ? String(item.title).replace(/[\/]/g, '-').slice(0, 95) : 'detalhes recebidos';
+        return `Detalhes consultados: ${title}`;
+      }
+      if (path.startsWith('/worth')) {
+        const value = findValueByKeys(data, ['estimated_worth', 'total_worth', 'totalworth', 'worth', 'total_value', 'value']);
+        return value !== null ? `Valor estimado consultado: ${String(value).slice(0, 80)}` : 'Consulta do valor estimado concluída';
+      }
+      return 'Requisição concluída';
+    }
+
     async function requestJSON(path) {
       const response = await fetch(`${API_BASE}${path}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
       });
       if (!response.ok) throw new Error(`A API respondeu com status HTTP ${response.status}.`);
-      return response.json();
+      const data = await response.json();
+
+      await registrarLog(describeGamerPowerMethod(path), summarizeApiResult(path, data));
+      return data;
+    }
+
+    function setLogsStatus(message, state = '') {
+      el.logsStatus.className = `logs-status${state ? ` ${state}` : ''}`;
+      el.logsStatus.textContent = message;
+    }
+
+    function respostaIndicaErro(payload, rawText = '') {
+      const texto = normalize(`${rawText} ${typeof payload === 'string' ? payload : JSON.stringify(payload || '')}`);
+      if (texto.includes('matricula do aluno e invalida')) return true;
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        for (const [chave, valor] of Object.entries(payload)) {
+          const nome = normalize(chave);
+          if ((nome === 'erro' || nome === 'error') && valor && String(valor).trim()) return true;
+        }
+      }
+      return /^\s*(erro|error)\b/.test(texto);
+    }
+
+    function mensagemDaResposta(payload, textoBruto = '') {
+      if (typeof payload === 'string' && payload.trim()) return payload.trim();
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        const mensagem = valorDoCampo(payload, ['sucesso', 'mensagem', 'message', 'erro', 'error']);
+        if (mensagem !== undefined && mensagem !== null && String(mensagem).trim()) return String(mensagem);
+      }
+      return String(textoBruto || '').trim();
+    }
+
+    async function registrarLog(metodo, resultado) {
+      if (!matriculaConfigurada()) {
+        setLogsStatus('Configure sua matrícula na constante MATRICULA no início de script.js para habilitar o registro de logs.', 'warning');
+        return;
+      }
+
+      const partes = [MATRICULA.trim(), 'GamerPower', metodo, resultado].map(parte => encodeURIComponent(String(parte).slice(0, 180)));
+      const url = `${LOGS_API_BASE}/inserir/log/${partes.join('/')}`;
+      try {
+        const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json, text/plain, */*' } });
+        const texto = await response.text();
+        let payload = texto;
+        try { payload = JSON.parse(texto); } catch (_) { /* A API também pode retornar texto simples. */ }
+        if (!response.ok || respostaIndicaErro(payload, texto)) {
+          throw new Error(texto || `HTTP ${response.status}`);
+        }
+        setLogsStatus('Requisição à GamerPower registrada na API de logs.', 'success');
+        if (logsViewed) await carregarLogs(true);
+      } catch (error) {
+        console.warn('Não foi possível registrar o log:', error);
+        setLogsStatus('Não foi possível registrar o log. Confira a matrícula e a conexão com a API de logs.', 'error');
+      }
+    }
+
+    function valorDoCampo(objeto, nomes) {
+      if (!objeto || typeof objeto !== 'object') return undefined;
+      const normalizarChave = texto => String(texto).toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const nome of nomes) {
+        const desejado = normalizarChave(nome);
+        const entrada = Object.entries(objeto).find(([chave]) => normalizarChave(chave) === desejado);
+        if (entrada) return entrada[1];
+      }
+      return undefined;
+    }
+
+    function extrairListaDeLogs(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (!payload || typeof payload !== 'object') return null;
+      for (const chave of ['logs', 'data', 'resultado', 'sucesso', 'SUCESSO']) {
+        if (Array.isArray(payload[chave])) return payload[chave];
+      }
+      return null;
+    }
+
+    function formatarDataLog(valor) {
+      if (!valor) return 'Data não informada';
+      const data = new Date(valor);
+      if (Number.isNaN(data.getTime())) return String(valor);
+      return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(data);
+    }
+
+    function renderLogs(logs) {
+      if (!logs.length) {
+        el.logsList.innerHTML = '<div class="logs-empty">Nenhum log foi registrado para esta matrícula.</div>';
+        return;
+      }
+      el.logsList.innerHTML = logs.map((log, indice) => {
+        const id = valorDoCampo(log, ['idlog', 'id_log', 'idLog', 'id']);
+        const api = valorDoCampo(log, ['api', 'nomeapi']) ?? 'API não informada';
+        const metodo = valorDoCampo(log, ['metodo', 'method', 'nomeMetodo', 'operacao']) ?? 'Método não informado';
+        const resultado = valorDoCampo(log, ['resultado', 'result', 'resposta', 'response']) ?? 'Resultado não informado';
+        const data = valorDoCampo(log, ['data', 'datahora', 'created_at', 'createdAt', 'dataregistro', 'timestamp']);
+        const idTexto = id !== undefined && id !== null && id !== '' ? String(id) : '';
+        return `<article class="log-card">
+          <div class="log-main">
+            <h3 class="log-title">${escapeHTML(api)} <span class="log-id">${idTexto ? `Log #${escapeHTML(idTexto)}` : `Registro ${indice + 1}`}</span></h3>
+            <div class="log-details">
+              <div><strong>Método:</strong> ${escapeHTML(metodo)}</div>
+              <div><strong>Resultado:</strong> ${escapeHTML(resultado)}</div>
+              <div><strong>Data:</strong> ${escapeHTML(formatarDataLog(data))}</div>
+            </div>
+          </div>
+          ${idTexto ? `<button class="log-delete" type="button" data-log-id="${escapeHTML(idTexto)}">Excluir log</button>` : '<span class="log-id">ID de exclusão não fornecido</span>'}
+        </article>`;
+      }).join('');
+    }
+
+    async function carregarLogs(silencioso = false) {
+      logsViewed = true;
+      if (!matriculaConfigurada()) {
+        setLogsStatus('Configure sua matrícula na constante MATRICULA no início de script.js antes de consultar os logs.', 'warning');
+        el.logsList.innerHTML = '<div class="logs-empty">A consulta de logs será habilitada depois de informar a matrícula.</div>';
+        return;
+      }
+
+      const requestId = ++latestLogsRequest;
+      if (!silencioso) setLogsStatus('Consultando os logs registrados...');
+      el.logsRefresh.disabled = true;
+      try {
+        const response = await fetch(`${LOGS_API_BASE}/logs/${encodeURIComponent(MATRICULA.trim())}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json, text/plain, */*' }
+        });
+        const texto = await response.text();
+        let payload = texto;
+        try { payload = JSON.parse(texto); } catch (_) { /* Mantém o retorno em texto para exibir erro. */ }
+        if (!response.ok || respostaIndicaErro(payload, texto)) throw new Error(texto || `HTTP ${response.status}`);
+        const logs = extrairListaDeLogs(payload);
+        if (!logs) throw new Error('A resposta da API não contém uma lista de logs reconhecida.');
+        if (requestId !== latestLogsRequest) return;
+        renderLogs(logs);
+        setLogsStatus(`${logs.length} ${logs.length === 1 ? 'log encontrado' : 'logs encontrados'}.`, 'success');
+      } catch (error) {
+        if (requestId !== latestLogsRequest) return;
+        console.warn('Falha ao consultar logs:', error);
+        setLogsStatus('Não foi possível consultar os logs. Verifique a matrícula e tente novamente.', 'error');
+        el.logsList.innerHTML = `<div class="logs-empty">${escapeHTML(error.message || 'Erro ao consultar logs.')}</div>`;
+      } finally {
+        if (requestId === latestLogsRequest) el.logsRefresh.disabled = false;
+      }
+    }
+
+    async function excluirLog(idLog, botao) {
+      if (!matriculaConfigurada()) {
+        setLogsStatus('Configure sua matrícula na constante MATRICULA no início de script.js.', 'warning');
+        return;
+      }
+      if (!window.confirm(`Deseja realmente excluir o log #${idLog}?`)) return;
+      if (botao) {
+        botao.disabled = true;
+        botao.textContent = 'Excluindo...';
+      }
+      try {
+        const url = `${LOGS_API_BASE}/excluir/log/${encodeURIComponent(idLog)}/aluno/${encodeURIComponent(MATRICULA)}`;
+        console.log(url);
+        const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json, text/plain, */*' } });
+        const texto = await response.text();
+        let payload = texto;
+        try { payload = JSON.parse(texto); } catch (_) { /* Resposta em texto simples. */ }
+        if (!response.ok) throw new Error(texto || `HTTP ${response.status}`);
+        const mensagem = mensagemDaResposta(payload, texto);
+        if (normalize(mensagem).includes('nenhum log foi excluido')) {
+          setLogsStatus(`A API informou: ${mensagem}`, 'warning');
+        } else {
+          setLogsStatus(mensagem || `Solicitação de exclusão do log #${idLog} enviada.`, 'success');
+        }
+        await carregarLogs(true);
+      } catch (error) {
+        console.warn('Falha ao excluir log:', error);
+        setLogsStatus('Não foi possível excluir este log. Confira a matrícula e tente novamente.', 'error');
+      } finally {
+        if (botao) {
+          botao.disabled = false;
+          botao.textContent = 'Excluir log';
+        }
+      }
     }
 
     function setStatus(message, state = 'loading') {
@@ -218,6 +443,7 @@
       return 'https://www.gamerpower.com/';
     }
 
+    // Método 3: GET /giveaway?id={id}, para mostrar dados sem repetição de uma oferta.
     async function openDetails(id) {
       if (!id) return;
       el.modal.classList.remove('hidden');
@@ -282,6 +508,12 @@
     el.modalClose.addEventListener('click', closeModal);
     el.modal.addEventListener('click', event => { if (event.target === el.modal) closeModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+
+    el.logsRefresh.addEventListener('click', () => carregarLogs(false));
+    el.logsList.addEventListener('click', event => {
+      const botao = event.target.closest('.log-delete');
+      if (botao) excluirLog(botao.dataset.logId, botao);
+    });
 
     document.querySelector('#student-name').textContent = NOME_ALUNO;
     loadGiveaways({ ...currentFilters });
